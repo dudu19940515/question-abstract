@@ -1,7 +1,7 @@
 
 import tensorflow as tf
 
-from utils.data_loader import preprocess_sentence
+from utils.preprocess import preprocess_sentence
 
 def evaluate(model,vocab,reverse_vocab, sentence, params):
 
@@ -26,7 +26,7 @@ def evaluate(model,vocab,reverse_vocab, sentence, params):
 
         attention_plot[t] = attention_weights.numpy()
 
-        prediction_id = tf.argmax(predictons[0]).numpy()
+        prediction_id = tf.argmax(predictions[0]).numpy()
 
         results = results+reverse_vocab[prediction_id] +' '
 

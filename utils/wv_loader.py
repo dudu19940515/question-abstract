@@ -5,6 +5,8 @@ from gensim.models.word2vec import LineSentence, Word2Vec
 # 引入日志配置
 import logging
 
+from utils.config import embedding_matrix_path, vocab_path, save_wv_model_path
+
 def load_word2vec_file(save_wv_model_path):
     # 保存词向量模型
     wv_model = Word2Vec.load(save_wv_model_path)
@@ -38,34 +40,61 @@ class Vocab:
     UNKNOWN_TOKEN = '<UNK>'
     START_DECODING = '<START>'
     STOP_DECODING = '<STOP>'
+    MASKS = [PAD_TOKEN, UNKNOWN_TOKEN, START_DECODING, STOP_DECODING]
+    MASK_COUNT = len(MASKS)
 
-    def __init__(self, vocab_file, Vocab_max_size = None):
-        self.word2id, self.id2word = self.load_vocab(vocab_file, Vocab_max_size)
-        self.count = len(self.vocab)
+    PAD_TOKEN_INDEX = MASKS.index(PAD_TOKEN)
+    UNKNOWN_TOKEN_INDEX = MASKS.index(UNKNOWN_TOKEN)
+    START_DECODING_INDEX = MASKS.index(START_DECODING)
+    STOP_DECODING_INDEX = MASKS.index(STOP_DECODING)
 
-    @staticmethod
-    def load_vocab(vocab_file, Vocab_max_size = None):
-        vocab = {}
-        reverse_vocab = {}
+    def __init__(self, vocab_file=vocab_path, vocab_max_size=None):
+        """
+        Vocab 对象,vocab基本操作封装
+        :param vocab_file: Vocab 存储路径
+        :param vocab_max_size: 最大字典数量
+        """
+        # self.PAD_TOKEN_INDEX = None
+        # self.UNKNOWN_TOKEN_INDEX = None
+        # self.START_DECODING_INDEX = None
+        # self.STOP_DECODING_INDEX = None
+        self.word2id, self.id2word = self.load_vocab(vocab_file, vocab_max_size)
+        self.count = len(self.word2id)
 
-        with open(vocab_file, 'r', 'utf-8') as f:
-            for line in f.readlines():
-                word,index = line.strip().split('\t')
-                index = int(index)
+    def load_vocab(self, file_path, vocab_max_size=None):
+        """
+        读取字典
+        :param file_path: 文件路径
+        :return: 返回读取后的字典
+        """
+        vocab = {mask: index
+                 for index, mask in enumerate(Vocab.MASKS)}
 
-                if Vocab_max_size and Vocab_max_size<index:
-                    print("max_size of vocab was specified as %i; we now have %i words. Stopping reading." % (
-                        vocab_max_size, index))
-                    break
-                vocab[word] = index
-                reverse_vocab[index] = word
+        reverse_vocab = {index: mask
+                         for index, mask in enumerate(Vocab.MASKS)}
+
+        for line in open(file_path, "r", encoding='utf-8').readlines():
+            word, index = line.strip().split("\t")
+            index = int(index)
+            # 如果vocab 超过了指定大小
+            # 跳出循环 截断
+            if vocab_max_size and index > vocab_max_size - Vocab.MASK_COUNT:
+                print("max_size of vocab was specified as %i; we now have %i words. Stopping reading." % (
+                    vocab_max_size, index))
+                break
+            vocab[word] = index + Vocab.MASK_COUNT
+            reverse_vocab[index + Vocab.MASK_COUNT] = word
+
+        # self.PAD_TOKEN_INDEX = vocab[self.PAD_TOKEN]
+        # self.UNKNOWN_TOKEN_INDEX = vocab[self.UNKNOWN_TOKEN]
+        # self.START_DECODING_INDEX = vocab[self.START_DECODING]
+        # self.STOP_DECODING_INDEX = vocab[self.STOP_DECODING]
         return vocab, reverse_vocab
 
     def word_to_id(self, word):
-        if word in self.word2id:
-            return self.word2id[word]
-        else:
-            return self.word2id[UNKNOWN_TOKEN]
+        if word not in self.word2id:
+            return self.word2id[self.UNKNOWN_TOKEN]
+        return self.word2id[word]
 
     def id_to_word(self, word_id):
         if word_id not in self.id2word:
